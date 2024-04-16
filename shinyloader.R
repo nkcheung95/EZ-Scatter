@@ -18,8 +18,9 @@ install_load_packages <- function(packages) {
 
 # Call the function to install and load packages
 install_load_packages(packages)
-# Define the path to your Shiny app directory
-app_dir <- "./app.R"
+# Define the GitHub username and repository name
+github_username <- "nkcheung95"
+repo_name <- "EZ-Scatter"
 
-# Run the Shiny app
-runApp(appDir = app_dir)
+# Run the Shiny app from GitHub
+runGitHub(repo = repo_name, username = github_username)
