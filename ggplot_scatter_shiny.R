@@ -1,7 +1,26 @@
-# Load necessary libraries
-library(shiny)
-library(ggplot2)
+###LIBLOAD
 
+# Define the packages you want to use
+packages <- c(
+  "shiny","ggplot2"
+)
+
+# Function to install and load packages
+install_load_packages <- function(packages) {
+  # Check which packages are not installed
+  not_installed <- setdiff(packages, rownames(installed.packages()))
+  
+  # Install the missing packages
+  if (length(not_installed) > 0) {
+    install.packages(not_installed)
+  }
+  
+  # Load all the packages
+  invisible(sapply(packages, library, character.only = TRUE))
+}
+
+# Call the function to install and load packages
+install_load_packages(packages)
 # Define UI
 ui <- fluidPage(
   titlePanel("GGPlot2 Visualizer"),
