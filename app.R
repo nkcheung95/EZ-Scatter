@@ -1,9 +1,5 @@
-###LIBLOAD
-
 # Define the packages you want to use
-packages <- c(
-  "shiny","ggplot2"
-)
+packages <- c("shiny", "ggplot2")
 
 # Function to install and load packages
 install_load_packages <- function(packages) {
@@ -21,6 +17,7 @@ install_load_packages <- function(packages) {
 
 # Call the function to install and load packages
 install_load_packages(packages)
+
 # Define UI
 ui <- fluidPage(
   titlePanel("GGPlot2 Visualizer"),
@@ -34,13 +31,15 @@ ui <- fluidPage(
       ),
       selectInput("x_var", "X Variable", NULL),
       selectInput("y_var", "Y Variable", NULL),
-      selectInput("point_color", "Select Point Color",
+      selectInput("group_var", "Group Variable (for point colors)", NULL),
+      selectInput("point_color", "Select Default Point Color",
                   choices = c("Blue" = "#003366", "Red" = "#CC0000", "Green" = "#009900")),
       selectInput("regression_color", "Select Regression Line Color",
                   choices = c("Blue" = "#003366", "Red" = "#CC0000", "Green" = "#009900")),
       selectInput("theme", "Select Theme", 
                   choices = c("Default", "Classic", "Minimal", "Dark")),
       checkboxInput("regression", "Add Regression Line", value = FALSE),
+      checkboxInput("color_by_group", "Color points by group", value = FALSE),
       textInput("title", "Title", ""),
       textInput("x_axis_label", "X-Axis Label", ""),
       textInput("y_axis_label", "Y-Axis Label", ""),
@@ -62,6 +61,7 @@ server <- function(input, output, session) {
     df <- read.csv(input$file$datapath)
     updateSelectInput(session, "x_var", choices = colnames(df))
     updateSelectInput(session, "y_var", choices = colnames(df))
+    updateSelectInput(session, "group_var", choices = c("None", colnames(df)))
     return(df)
   })
   
@@ -76,8 +76,11 @@ server <- function(input, output, session) {
   
   # Generate plot
   output$plot <- renderPlot({
-    p <- ggplot(data(), aes_string(x = input$x_var, y = input$y_var)) +
-      theme_bw() # default theme
+    req(input$x_var, input$y_var)
+    df <- data()
+    
+    # Create base plot
+    p <- ggplot(df, aes_string(x = input$x_var, y = input$y_var))
     
     # Apply selected theme
     if (input$theme == "Classic") {
@@ -86,17 +89,28 @@ server <- function(input, output, session) {
       p <- p + theme_minimal()
     } else if (input$theme == "Dark") {
       p <- p + theme_dark()
+    } else {
+      p <- p + theme_bw() # default theme
     }
     
-    # Add chosen geom layer (point)
-    p <- p + geom_point(color = input$point_color)
+    # Add points with or without grouping
+    if (input$color_by_group && input$group_var != "None") {
+      p <- p + geom_point(aes_string(color = input$group_var)) +
+        labs(color = input$group_var)
+    } else {
+      p <- p + geom_point(color = input$point_color)
+    }
     
-    # Add regression line with R-squared if selected
+    # Add regression line with R and R-squared if selected
     if (input$regression) {
-      fit <- lm(data = data(), formula = as.formula(paste(input$y_var, "~", input$x_var)))
+      formula <- as.formula(paste(input$y_var, "~", input$x_var))
+      fit <- lm(formula, data = df)
+      r_value <- cor(df[[input$x_var]], df[[input$y_var]], use = "complete.obs")
+      
       p <- p + geom_smooth(method = "lm", se = FALSE, color = input$regression_color) +
         annotate("text", x = Inf, y = Inf, hjust = 1, vjust = 1,
-                 label = paste("R-squared =", round(summary(fit)$r.squared, 3)))
+                 label = paste0("R = ", round(r_value, 3), 
+                               "\nR² = ", round(summary(fit)$r.squared, 3)))
     }
     
     # Set plot title and axis labels
